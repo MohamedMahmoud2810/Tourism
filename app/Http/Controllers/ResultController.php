@@ -334,7 +334,6 @@ class ResultController extends Controller
         try {
             DB::transaction(function () use ($next, $year_semester_ids, $students, &$flag, &$message) {
                 foreach ($students as $student) {
-                    //dd($student, $next['year']);
                     if ($student->result->count() < 14 and $next['semester'] == 'ثاني') {
                         $flag = true;
                         $message = 'خطا يجب رفع علي الاقل 14 مادة';
@@ -396,18 +395,19 @@ class ResultController extends Controller
             return redirect()->back()->withErrors('برجاء انشاء السنه الدراسية');
         }
         if ($next['action'] == 'up_level') {
+
             $students = Student::where('group_id', [1, 2, 3, 4])->with(['yearSemesterStudent',
                 'result' => function ($query) use ($year_semester_ids) {
                     $query->where('yearsemester_id', $year_semester_ids)->with('subject');
                 }])->get();
-               // dd($next['action'],$next['semester'],$year_semester_ids);
+
             $flag = false;
             $message = '';
+
             try {
                 DB::transaction(function () use ($year_semester_ids, $students, &$flag, &$message,$next) {
                     foreach ($students as $student) {
-                        if ($student->result->count() < 14) {
-                           // dd($student->result->count( ));
+                        if ($student->load('result')->result->count() < 14) {
                             $flag = true;
                             $message = 'خطا يجب رفع علي الاقل 14 مادة';
                             //abort(500);
@@ -426,13 +426,43 @@ class ResultController extends Controller
                             if ($student->group_id == 4) {
                                 if ($student->training != 'راسب' and $student->military != 'لم اجتاز' and $count == 0) {
                                     $student->group_id++;
+                                    $years = explode('/', $student->year);
+                                    if (count($years) == 2) {
+                                        $startYear = intval($years[0]);
+                                        $endYear = intval($years[1]);
+                                        $startYear++;
+                                        $endYear++;
+                                        $newYear = $startYear . '/' . $endYear;
+                                        $student->year = $newYear;
+
+                                    }
                                 }
                             } elseif ($student->group_id == 3) {
                                 if ($student->training_third_group == 'ناجح' or $count < 2) {
                                     $student->group_id++;
+                                    $years = explode('/', $student->year);
+                                    if (count($years) == 2) {
+                                        $startYear = intval($years[0]);
+                                        $endYear = intval($years[1]);
+                                        $startYear++;
+                                        $endYear++;
+                                        $newYear = $startYear . '/' . $endYear;
+                                        $student->year = $newYear;
+
+                                    }
                                 }
                             } else {
                                 $student->group_id++;
+                                $years = explode('/', $student->year);
+                                if (count($years) == 2) {
+                                    $startYear = intval($years[0]);
+                                    $endYear = intval($years[1]);
+                                    $startYear++;
+                                    $endYear++;
+                                    $newYear = $startYear . '/' . $endYear;
+                                    $student->year = $newYear;
+
+                                }
                             }
                             $student->studystatuses_id = 1;
                             $bonuGgroup = BonusDegree::first()->getOriginal()['degree_group' . $student->group_id];
@@ -509,6 +539,17 @@ class ResultController extends Controller
                         if ($success) {
                             if ($student->training == 'ناجح') {
                                 $student->group_id++;
+                                $years = explode('/', $student->year);
+                                if (count($years) == 2) {
+                                    $startYear = intval($years[0]);
+                                    $endYear = intval($years[1]);
+                                    $startYear++;
+                                    $endYear++;
+                                    $newYear = $startYear . '/' . $endYear;
+                                    $student->year = $newYear;
+                                    dd($student->year);
+
+                                }
                             }
                             $student->studystatuses_id = 1;
                         } else {

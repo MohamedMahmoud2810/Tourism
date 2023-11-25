@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\ResultController;
+use App\Http\Controllers\StudentsReportsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -90,6 +91,9 @@ Route::group(['middleware' => 'auth'], function () {
         Route::get('reports',[ReportsController::class,'chooseReports'])->name('choose.reports');
         Route::get('download-reports',[ReportsController::class,'reports'])->name('reports');
         ################################ END Reports ##########################
+    Route::get('students/reports', [StudentsReportsController::class, 'show'])->name('student-reports');
+    Route::post('students/reports/filter-students', [StudentsReportsController::class, 'dataTableResultsStudents'])->name('filter-students');
+
 
 ####################### End Site Configuration ####################################
 });

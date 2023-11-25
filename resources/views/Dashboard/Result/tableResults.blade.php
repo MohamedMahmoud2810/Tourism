@@ -76,10 +76,6 @@
                                             <select name="year" id="year-dropdown" class="custom-select mb-3">
                                             </select>
                                         </div>
-{{--                                        <div class="card-details mt-2 col-md-4">--}}
-{{--                                            <select name="semester" id="semester-dropdown" class="custom-select mb-3">--}}
-{{--                                            </select>--}}
-{{--                                        </div>--}}
                                         <div class="card-details mt-2 col-md-4">
                                             <button class="btn btn-success btn-lg" type="submit">بحث</button>
                                         </div>
@@ -90,7 +86,6 @@
                                 <thead>
                                 @foreach($columns as $column)
                                     <tr>
-{{--                                        <th></th>--}}
                                         @foreach($column as $col)
                                             <th colspan="{{$col['col']}}"
                                                 rowspan="{{$col['row']}}" class="border">

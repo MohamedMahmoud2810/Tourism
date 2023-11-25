@@ -17,7 +17,7 @@ class Group extends Model
 
     public function student()
     {
-        return $this->hasMany('App/Models/Student', 'group_id', 'id');
+        return $this->hasMany('App\Models\Student', 'group_id', 'id');
     }
 
     public function groupDepartmentSpecialize()

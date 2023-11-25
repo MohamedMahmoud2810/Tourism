@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 class GroupDepartmentSpecialize extends Model
 {
@@ -17,6 +18,11 @@ class GroupDepartmentSpecialize extends Model
     public function subject()
     {
         return $this->hasMany(Subject::class, 'gds_id', 'id');
+    }
+
+    public function scopeByGroup(Builder $query, $groupId)
+    {
+        return $query->where('group_id', $groupId);
     }
 
     public function group()

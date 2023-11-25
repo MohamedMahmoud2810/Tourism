@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Group;
+use App\Models\GroupDepartmentSpecialize;
 
 class Department extends Model
 {
@@ -17,7 +18,7 @@ class Department extends Model
 
     public function student()
     {
-        return $this->hasMany('App/Models/Student', 'department_id', 'id');
+        return $this->hasMany('App\Models\Student', 'department_id', 'id');
     }
 
     public function groupDepartmentSpecialize()

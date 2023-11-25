@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Result;
 use App\Models\YearSemester;
+use App\Queries\StudentQuery;
 
 class Student extends Model
 {
@@ -15,15 +16,38 @@ class Student extends Model
     protected $fillable = ['id', 'name', 'code', 'site_no', 'studystatuses_id','type_std', 'gender', 'immigration_std',
         'department_id', 'group_id', 'specialize_id', 'year','bonus', 'classfication', 'military','training','training_third_group'];
     public $timestamps = true;
-    protected $hidden = ['created_at', 'updated_at'];
+    protected $hidden = ['created_at', 'updated_at', 'gender'];
 
 
+    public function scopeByGroup($query, $groupId)
+    {
+        return $query->where('group_id', $groupId);
+    }
+
+    public function scopeBySpecialize($query, $specializeId)
+    {
+        return $query->where('specialize_id', $specializeId);
+    }
+
+    public function scopeByDepartment($query, $departmentID)
+    {
+        return $query->where('department_id', $departmentID);
+    }
+
+    public function scopeByStatus($query, $statusId)
+    {
+        return $query->where('studystatuses_id', $statusId);
+    }
+
+    public function scopeByYear($query, $year)
+    {
+        return $query->where('year', $year);
+    }
     public function scopeSelection($q)
     {
         return $q->select('id', 'code', 'site_no', 'studystatuses_id','type_std', 'name', 'department_id', 'group_id',
             'specialize_id', 'bonus', 'year' ,'classfication');
     }
-
 
     public function group()
     {
