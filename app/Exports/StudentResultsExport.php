@@ -22,11 +22,11 @@ class StudentResultsExport extends BaseStudentExport implements FromView
 
     protected string $specializeId;
 
-    protected string $year;
+    protected $year;
 
     protected string $statusId;
 
-    public function __construct($results ,string $groupId , string $departmentId , string $specializeId , string $year , string $statusId)
+    public function __construct($results ,string $groupId , string $departmentId , string $specializeId ,  $year , string $statusId)
     {
         $this->results = $results;
         $this->groupId = $groupId;
@@ -47,7 +47,6 @@ class StudentResultsExport extends BaseStudentExport implements FromView
         $this->query();
         $students = $this->query->get();
         $firstRecord = $this->query->first();
-
         return view('exports.export_students', [
             'group' => $firstRecord->group,
             'department' => $firstRecord->department,

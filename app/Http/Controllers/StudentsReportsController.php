@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\ReportTypeEnum;
 use App\Exports\StudentOverviewExport;
 use App\Exports\StudentResultsExport;
+use App\Helpers\SubjectTrait;
 use App\Http\Requests\StudentExportRequest;
 use App\Models\Department;
 use App\Models\Group;
@@ -18,11 +19,13 @@ use App\Models\YearSemester;
 use App\Models\YearSemesterStudent;
 use App\Queries\StudentQuery;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Facades\Excel;
 
 class StudentsReportsController extends Controller
 {
+    use SubjectTrait;
     public function show(Request $request)
     {
         if (!empty($request->all())) {
@@ -69,7 +72,7 @@ class StudentsReportsController extends Controller
         $departments = Department::all();
         $specializes = Specialize::all();
         $status = Studystatus::all();
-        $year = YearSemester::all();
+        $year_semester = YearSemester::all();
         $subjects = Subject::where($data)->pluck('name')
             ->transform(function ($value) {
                 return ['col' => 6, 'row' => 1, 'text' => $value];
@@ -82,12 +85,12 @@ class StudentsReportsController extends Controller
             $data['yearsemester_id'] = $request->yearsemester_id[0];
         } else {
             $data['studystatuses_id'] = 'all';
-            $data['yearsemester_id'] = $year->last()->id;
+            $data['yearsemester_id'] = $year_semester->last()->id;
         }
-        return view('Dashboard.students-reports.filter' , compact('subjects', 'groups', 'status', 'departments', 'specializes', 'year', 'data'));
+        return view('Dashboard.students-reports.filter' , compact('subjects', 'groups', 'status', 'departments', 'specializes', 'year_semester', 'data'));
     }
 
-    public function dataTableResultsStudents(Request $request)
+    public function dataTableResultsStudents (Request $request)
     {
         $validated = Validator::make($request->all(), [
             'department_id' => 'required|exists:departments,id',
@@ -108,6 +111,7 @@ class StudentsReportsController extends Controller
             'yearsemester_id' => 'required',
             'yearsemester_id.*' => 'required|exists:yearsemester,id',
             'studystatuses_id' => 'required|in:1,2,3,all',
+            'report_type' => 'required|in:1,2,3',
         ]);
         if ($validated->fails()) {
             return response(["draw" => 1,
@@ -116,6 +120,7 @@ class StudentsReportsController extends Controller
         }
 
         $data = $validated->validate();
+
 
         $groupId = $data['group_id'];
         $departmentId = $data['department_id'];
@@ -138,7 +143,126 @@ class StudentsReportsController extends Controller
             ])->selectRaw('written + applied + kpis + results.bonus as total')
             ->selectRaw('students.bonus as remaining_bonus')->get();
 
-        return Excel::download(new StudentResultsExport($results , $groupId ,  $departmentId , $specializeId ,  $year ,  $statusId), 'filtered_results.xlsx');
+        $students = Student::with(['group', 'department', 'specialize', 'result.subject'])
+//            ->join('yearsemester_student', 'students.id', '=', 'yearsemester_student.student_id')
+            ->where('students.group_id', $groupId)
+            ->where('students.department_id', $departmentId)
+            ->where('students.specialize_id', $specializeId);
+//            ->where('yearsemester_student.yearsemester_id', $year->id);
+        if ($statusId !== 'all') {
+            $students->where('studystatuses_id', $statusId);
+        }
+
+
+
+        switch ((int)$data['report_type']) {
+            case 1:
+                $view = 'export_students';
+                $exportClass = new StudentResultsExport($results, $groupId, $departmentId, $specializeId, $year, $statusId);
+                break;
+            case 2:
+                $view = 'students_overview';
+
+                $gradeCounts = [];
+                $countAcceptedStudents = 0;
+                $countGoodStudents = 0;
+                $countVeryGoodStudents = 0;
+                $countExcellentStudents = 0;
+                $countWithOneSubject = 0;
+                $countWithTwoSubject = 0;
+                $absentStudents = 0;
+                $failedStudents = 0;
+
+                foreach ($students->get() as $student){
+                    $gradesString = $this->totalGrade($student->id);
+                    $overallGrade = implode(', ', $gradesString);
+
+
+                    if (isset($gradeCounts[$overallGrade])) {
+                        $gradeCounts[$overallGrade]++;
+                    } else {
+                        $gradeCounts[$overallGrade] = 1;
+                    }
+
+
+                    $enrolledStudentsCount = $students->get()->count();
+
+                    if ($overallGrade !== null && $overallGrade === 'مقبول') {
+                        $countAcceptedStudents++;
+                    } elseif($overallGrade !== null && $overallGrade === 'جيد') {
+                        $countGoodStudents++;
+                    }elseif($overallGrade !== null && $overallGrade === 'جيد جدا') {
+                        $countVeryGoodStudents++;
+                    }elseif($overallGrade !== null && $overallGrade === 'ممتاز') {
+                        $countExcellentStudents++;
+                    }elseif($overallGrade !== null && $overallGrade === 'مادة') {
+                        $countWithOneSubject++;
+                    }
+                    elseif($overallGrade !== null && ($overallGrade === 'راسب') ) {
+                        $failedStudents++;
+                    } elseif($overallGrade !== null && $overallGrade === 'غائب') {
+                        $absentStudents++;
+                    } elseif($overallGrade !== null && $overallGrade === 'مادتين') {
+                        $countWithTwoSubject++;
+                    }
+
+
+                }
+
+                $succeededStudents = $countAcceptedStudents + $countGoodStudents + $countVeryGoodStudents + $countExcellentStudents + $countWithOneSubject + $countWithTwoSubject ;
+                $successPercentage = number_format(($succeededStudents / $enrolledStudentsCount)*100 , 2);
+                $overview = [
+                    'enrolledStudentsCount' => $enrolledStudentsCount,
+                    'appliedStudentsCount' => $enrolledStudentsCount,
+                    'presentStudentsCount' => $enrolledStudentsCount-$absentStudents,
+                    'absentStudentsCount' => $absentStudents,
+                    'suspendedStudentsCount' => 0,
+                    'excellentStudentsCount' => $countExcellentStudents,
+                    'veryGoodStudentsCount' => $countVeryGoodStudents,
+                    'goodStudentsCount' => $countGoodStudents,
+                    'passStudentsCount' => $countAcceptedStudents,
+                    'failedStudentsCount' => $failedStudents,
+                    'succeededStudentsCount' => $succeededStudents,
+                    'oneSubjectFailedStudentCount' => $countWithOneSubject,
+                    'twoSubjectFailedStudentCount' => $countWithTwoSubject,
+                    'totalSuccessPercentage' => $successPercentage,
+                ];
+                $exportClass = new StudentOverviewExport($groupId, $departmentId, $specializeId, $year, $statusId , $overview);
+                break;
+            case 3:
+                $view = 'students_statistics';
+                break;
+            default:
+                return abort(400, 'Unsupported report type');
+        }
+        $group = Group::find($groupId);
+        $department = Department::find($departmentId);
+        $specialize = Specialize::find($specializeId);
+        $status = Studystatus::find($statusId);
+        $subjectNames = Subject::whereHas('groupDepartmentSpecialize', function ($query) use ($groupId, $departmentId, $specializeId) {
+            $query->where('group_id', $groupId)
+                ->where('department_id', $departmentId)
+                ->where('specialize_id', $specializeId);
+        })->pluck('name');
+        $subjectDistributions = Subject::whereHas('groupDepartmentSpecialize', function ($query) use ($groupId, $departmentId, $specializeId) {
+            $query->where('group_id', $groupId)
+                ->where('department_id', $departmentId)
+                ->where('specialize_id', $specializeId);
+        })->get(['max_written', 'max_kpis', 'max_applied']);
+
+
+        if($data['report_type']  == 1){
+            return Excel::download($exportClass, 'filtered_results.xlsx');
+        }elseif ($data['report_type'] == 2){
+            $export = new StudentOverviewExport($groupId, $departmentId, $specializeId, $year, $statusId, $overview);
+            return Excel::download($export, 'test_export.xlsx');
+//            return Excel::download($exportClass, 'students_overview.xlsx');
+        }elseif ($data['report_type'] == 3){
+            return Excel::download($exportClass, 'students_statistics.xlsx');
+        }else{
+            return 'Undefined Report Type';
+        }
+
     }
 
 

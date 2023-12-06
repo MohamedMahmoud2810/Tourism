@@ -16,7 +16,7 @@ abstract class BaseStudentExport
     protected string $specializeId;
     protected string $statusId;
 
-    protected string $year;
+    protected $year;
 
     protected Builder $query;
 //
@@ -26,9 +26,14 @@ abstract class BaseStudentExport
 //        ob_start();
 //    }
 
-    public function __construct(int $groupId)
+    public function __construct(string $groupId, string $departmentId, string $specializeId, $year, string $statusId)
     {
         $this->groupId = $groupId;
+        $this->departmentId = $departmentId;
+        $this->specializeId = $specializeId;
+        $this->year = $year;
+        $this->statusId = $statusId;
+        $this->reportType = ReportTypeEnum::STUDENTS_RESULTS;
     }
 
     public static function make(): static
@@ -38,14 +43,15 @@ abstract class BaseStudentExport
 
     public function query(): Builder
     {
-        $this->query = Student::with(['group', 'department', 'specialize', 'Studystatus', 'result.subject'])
-            ->where('group_id', $this->groupId)
-            ->where('department_id', $this->departmentId)
-            ->where('specialize_id', $this->specializeId);
+        $this->query = Student::with(['group', 'department', 'specialize', 'result.subject'])
+            ->join('yearsemester_student', 'students.id', '=', 'yearsemester_student.student_id')
+            ->where('students.group_id', $this->groupId)
+            ->where('students.department_id', $this->departmentId)
+            ->where('students.specialize_id', $this->specializeId)
+            ->where('yearsemester_student.yearsemester_id', $this->year->id);
         if ($this->statusId !== 'all') {
             $this->query->where('studystatuses_id', $this->statusId);
         }
-
         return $this->query;
     }
 

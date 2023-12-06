@@ -326,6 +326,7 @@ trait SubjectTrait
 
                     $NoOfSuccessedSubjectInLevel += 1;
 
+
                 }
 
 
@@ -357,11 +358,10 @@ trait SubjectTrait
             } else if ($NoOfSuccessedSubjectInLevel == 12) {
                 $StudentGrad +=[$group=>'مادتين'];
             }
-            else if ($total==0 ) {
+            else if ($total==0) {
                 if($student['group_id'] == $group){
                      $StudentGrad +=[$group=>'غائب'];
                 }
-               // $StudentGrad +=[$group=>'مدخلش'];
             }
             else{
                 $StudentGrad +=[$group=>'راسب'];

@@ -7,11 +7,21 @@ use App\Models\Student;
 use Illuminate\Contracts\View\View;
 use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromView;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithMapping;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class StudentOverviewExport extends BaseStudentExport implements FromView
+class StudentOverviewExport extends BaseStudentExport implements FromView , WithMapping, ShouldAutoSize, WithStyles
 {
     use Exportable;
+    private array $overview;
 
+    public function __construct(string $groupId, string $departmentId, string $specializeId, $year, string $statusId, array $overview)
+    {
+        parent::__construct($groupId, $departmentId, $specializeId, $year, $statusId);
+        $this->overview = $overview;
+    }
     public function view(): View
     {
         $this
@@ -27,18 +37,18 @@ class StudentOverviewExport extends BaseStudentExport implements FromView
     private function statisticsReport(): View
     {
         return view('exports.students_statistics', [
-            'overview' => $this->getOverview()
+            'overview' => $this->overview,
         ]);
     }
 
     private function overviewReport(): View
     {
         return view('exports.students_overview', [
-            'overview' => $this->getOverview()
+            'overview' => $this->overview,
         ]);
     }
 
-    private function getOverview(): array
+    public function getOverview(): array
     {
         $students = $this->query->get()
             ->map(fn(Student $student) => $student->setAttribute('overall_grade', $student->overall_grade));
@@ -76,4 +86,13 @@ class StudentOverviewExport extends BaseStudentExport implements FromView
     }
 
 
+    public function map($row): array
+    {
+        // TODO: Implement map() method.
+    }
+
+    public function styles(Worksheet $sheet)
+    {
+        // TODO: Implement styles() method.
+    }
 }

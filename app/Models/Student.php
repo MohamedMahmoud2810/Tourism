@@ -84,9 +84,9 @@ class Student extends Model
         return $q->select('id', 'code', 'department_id', 'group_id');
     }
 
-    public function yearSemesterStudent()
+    public function yearSemesterStudents()
     {
-        return $this->hasMany(YearSemesterStudent::class, 'student_id', 'id');
+        return $this->hasMany(YearSemesterStudent::class, 'student_id');
     }
 
 

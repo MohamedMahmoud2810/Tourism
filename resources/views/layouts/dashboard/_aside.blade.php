@@ -55,7 +55,14 @@
                         <li><a  href="{{route('bonusDegree',1)}}"><i class="fa fa-signal"></i><span> درجات التيسير </span></a></li>
                         <li><a  href="{{route('add.bonus')}}"><i class="fa fa-signal"></i><span> تحديث الفرق والتيسير </span></a></li>
                        </ul>
-                </li>
+              </li>
+
+              <li class="mega">
+                  <a href="#" data-toggle="collapse" data-target="#rep"><i class="fa fa-th"></i> تقارير <i class="fa fa-fw fa-angle-down pull-right"></i></a>
+                  <ul id="rep" class="collapse">
+                      <li><a href="{{route('student-reports')}}"><i class="fa fa-users"></i><span>  تقارير الطلاب </span></a></li>
+                  </ul>
+              </li>
 
 
 
