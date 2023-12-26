@@ -76,7 +76,7 @@ trait SubjectTrait
         unset($student_subject['count']);
         $subjects = collect($student_subject)->sortBy('yearsemester_id')->groupBy('subjects_id')
             ->transform(function ($value) use ($year_semester) {
-                if (in_array($value->last()['grade'], ['ضعيف', 'ضعيف جدا', 'راسب تحريرى', 'غياب'])) {
+                if (in_array($value->last()['grade'], ['ضعيف', 'ضعيف جدا', 'راسب تحريرى', 'غياب' , 'عذر'])) {
                     return $value;
                 }
             })->whereNotNull()->keys()->transform(function ($value) {
@@ -111,6 +111,9 @@ trait SubjectTrait
     if ($written === null) {
         return 'غياب';
     }
+    if ($written == -1){
+        return 'عذر';
+    }
     if ($subject['max_written'] > 0 and $written < $subject['max_written'] * 0.3 and $total >= 44 ) {
         return 'راسب تحريرى';
     }
@@ -132,6 +135,7 @@ trait SubjectTrait
     if ($total <= $subject_total * 1) {
         return "ممتاز";
     }
+
     return '';
 }
 
@@ -154,6 +158,9 @@ trait SubjectTrait
     public function generalGrade(int $degree, int $total): string
     {
        if ($degree==0)return '';
+       if($degree == 'عذر'){
+           return 'عذر';
+       }
         $percent = $degree / $total;
         if ($percent >= 0.50 and $percent < 0.65) {
             return "مقبول";
@@ -236,7 +243,7 @@ trait SubjectTrait
 
                 $success_results = Result::with('student')
                     ->where('students_id', $student_id)
-                    -> whereNotIn('grade', ['غياب','راسب تحريرى', 'ضعيف جدا', 'ضعيف'])
+                    -> whereNotIn('grade', ['غياب','راسب تحريرى', 'ضعيف جدا', 'ضعيف','عذر'])
                     ->whereIn('yearsemester_id',[$ii, $ii + 1])
                     ->get()
                     ->groupBy('subjects_id');
@@ -308,7 +315,7 @@ trait SubjectTrait
                 $Succeded_subject = (Result::with('student')
                     ->where('students_id', $student_id)
                     ->where('subjects_id', $subId)
-                    ->whereNotIn('grade', ['غياب', 'راسب تحريرى', 'ضعيف جدا', 'ضعيف'])->get()
+                    ->whereNotIn('grade', ['غياب', 'راسب تحريرى', 'ضعيف جدا', 'ضعيف' , 'عذر'])->get()
                 );
                 if (count($Succeded_subject) == 1) {
 
@@ -362,6 +369,9 @@ trait SubjectTrait
                 if($student['group_id'] == $group){
                      $StudentGrad +=[$group=>'غائب'];
                 }
+            }
+            else if($total == 'عذر'){
+                $StudentGrad += [$group=>'وقف قيد'];
             }
             else{
                 $StudentGrad +=[$group=>'راسب'];

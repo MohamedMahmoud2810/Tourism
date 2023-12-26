@@ -16,9 +16,11 @@ use App\Models\Specialize;
 use App\Models\Student;
 use App\Models\Studystatus;
 use App\Models\Subject;
+use App\Models\Trace;
 use App\Models\YearSemester;
 use App\Models\YearSemesterStudent;
 use App\Queries\StudentQuery;
+use Dflydev\DotAccessData\Data;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -143,19 +145,33 @@ class StudentsReportsController extends Controller
                 'yearsemester.year as year', 'yearsemester.semester as semester', 'grade'
             ])->selectRaw('written + applied + kpis + results.bonus as total')
             ->selectRaw('students.bonus as remaining_bonus')->get();
-        dd($results);
-
-        $students = Student::with(['group', 'department', 'specialize', 'result.subject'])
-            ->join('yearsemester_student', 'students.id', '=', 'yearsemester_student.student_id')
-            ->where('students.group_id', $groupId)
-            ->where('students.department_id', $departmentId)
-            ->where('students.specialize_id', $specializeId)
-            ->where('yearsemester_student.yearsemester_id', $year->id);
-        if ($statusId !== 'all') {
-            $students->where('studystatuses_id', $statusId);
+        foreach ($results as $result){
+            dd($result);
         }
 
 
+        $traceYear = Trace::where('yearsemester_id' , $year->id)->get();
+
+        if (isset($traceYear[1]['action'])){
+            $students = Student::with(['group', 'department', 'specialize', 'result.subject'])
+            ->join('yearsemester_student', 'students.id', '=', 'yearsemester_student.student_id')
+                ->where('yearsemester_student.group_id', $groupId)
+                ->where('yearsemester_student.department_id', $departmentId)
+                ->where('yearsemester_student.specialize_id', $specializeId)
+            ->where('yearsemester_student.yearsemester_id', $year->id);
+            if ($statusId !== 'all') {
+                $yearSemesterStudent = YearSemesterStudent::where('id' , $year->id)->first();
+                $yearSemesterStudent->where('studystatuses_id', $statusId);
+            }
+        }else{
+            $students = Student::with(['group', 'department', 'specialize', 'result.subject'])
+                ->where('students.group_id', $groupId)
+                ->where('students.department_id', $departmentId)
+                ->where('students.specialize_id', $specializeId);
+            if ($statusId !== 'all') {
+                $students->where('studystatuses_id', $statusId);
+            }
+        }
         $gradeCounts = [];
         $countAcceptedStudents = 0;
         $countGoodStudents = 0;
@@ -166,44 +182,49 @@ class StudentsReportsController extends Controller
         $absentStudents = 0;
         $failedStudents = 0;
 
+        $studentSumOfGrades = 0;
+        $percentage = 0;
         foreach ($students->get() as $student){
+            foreach($student->result as $studentResult){
+                $totalForStudent = $studentResult->written + $studentResult->applied + $studentResult->bonus + $studentResult->kpis;
+                $totalForAllSubjects = count($student->result)*100;
+                $studentSumOfGrades += $totalForStudent;
+                $percentage = ($studentSumOfGrades / $totalForAllSubjects)*100;
+            }
             $gradesString = $this->totalGrade($student->id);
             $overallGrade = implode(', ', $gradesString);
-
-
             if (isset($gradeCounts[$overallGrade])) {
                 $gradeCounts[$overallGrade]++;
             } else {
                 $gradeCounts[$overallGrade] = 1;
             }
-
-
             $enrolledStudentsCount = $students->get()->count();
 
-            if ($overallGrade !== null && $overallGrade === 'مقبول') {
+
+            if ($gradesString['1'] === 'مقبول') {
                 $countAcceptedStudents++;
-            } elseif($overallGrade !== null && $overallGrade === 'جيد') {
+            } elseif($gradesString['1'] === 'جيد') {
                 $countGoodStudents++;
-            }elseif($overallGrade !== null && $overallGrade === 'جيد جدا') {
+            }elseif($gradesString['1'] === 'جيد جدا') {
                 $countVeryGoodStudents++;
-            }elseif($overallGrade !== null && $overallGrade === 'ممتاز') {
+            }elseif($gradesString['1'] === 'ممتاز') {
                 $countExcellentStudents++;
-            }elseif($overallGrade !== null && $overallGrade === 'مادة') {
+            }elseif($gradesString['1'] === 'مادة') {
                 $countWithOneSubject++;
             }
-            elseif($overallGrade !== null && ($overallGrade === 'راسب') ) {
+            elseif($gradesString['1'] === 'راسب') {
                 $failedStudents++;
-            } elseif($overallGrade !== null && $overallGrade === 'غائب') {
+            } elseif($gradesString['1'] === 'غائب') {
                 $absentStudents++;
-            } elseif($overallGrade !== null && $overallGrade === 'مادتين') {
+            } elseif($gradesString['1'] === 'مادتين') {
                 $countWithTwoSubject++;
             }
-
-
         }
 
-        $succeededStudents = $countAcceptedStudents + $countGoodStudents + $countVeryGoodStudents + $countExcellentStudents + $countWithOneSubject + $countWithTwoSubject ;
+
+        $succeededStudents = $countAcceptedStudents + $countGoodStudents + $countVeryGoodStudents + $countExcellentStudents + $countWithOneSubject + $countWithTwoSubject;
         $successPercentage = number_format(($succeededStudents / $enrolledStudentsCount)*100 , 2);
+
         $overview = [
             'enrolledStudentsCount' => $enrolledStudentsCount,
             'appliedStudentsCount' => $enrolledStudentsCount,
@@ -228,8 +249,6 @@ class StudentsReportsController extends Controller
                 break;
             case 2:
                 $view = 'students_overview';
-
-
                 $exportClass = new StudentOverviewExport($groupId, $departmentId, $specializeId, $year, $statusId , $overview);
                 break;
             case 3:
@@ -239,34 +258,97 @@ class StudentsReportsController extends Controller
             default:
                 return abort(400, 'Unsupported report type');
         }
-//        $group = Group::find($groupId);
-//        $department = Department::find($departmentId);
-//        $specialize = Specialize::find($specializeId);
-//        $status = Studystatus::find($statusId);
-//        $subjectNames = Subject::whereHas('groupDepartmentSpecialize', function ($query) use ($groupId, $departmentId, $specializeId) {
-//            $query->where('group_id', $groupId)
-//                ->where('department_id', $departmentId)
-//                ->where('specialize_id', $specializeId);
-//        })->pluck('name');
-//        $subjectDistributions = Subject::whereHas('groupDepartmentSpecialize', function ($query) use ($groupId, $departmentId, $specializeId) {
-//            $query->where('group_id', $groupId)
-//                ->where('department_id', $departmentId)
-//                ->where('specialize_id', $specializeId);
-//        })->get(['max_written', 'max_kpis', 'max_applied']);
-
-
         if($data['report_type']  == 1){
             return Excel::download($exportClass, 'filtered_results.xlsx');
         }elseif ($data['report_type'] == 2){
             $export = new StudentOverviewExport($groupId, $departmentId, $specializeId, $year, $statusId, $overview);
-            return Excel::download($export, 'test_export.xlsx');
-//            return Excel::download($exportClass, 'students_overview.xlsx');
+            return Excel::download($export, 'students_overview.xlsx');
         }elseif ($data['report_type'] == 3){
             return Excel::download($exportClass, 'students_statistics.xlsx');
         }else{
             return 'Undefined Report Type';
         }
 
+    }
+
+//    public function (){
+//        $students = Student::with('Studystatus')->where('studystatuses_id' , 2)->get();
+////            ->join('groups', 'students.group_id', '=', 'groups.id')
+//
+//        $columns = [[
+//            ['col' => 1, 'row' => 2, 'text' => 'اسم الطالب'],
+//            ['col' => 1, 'row' => 2, 'text' => 'كود الطالب'],
+//            ['col' => 1, 'row' => 2, 'text' => 'رقم جلوس الطالب'],
+//            ['col' => 1, 'row' => 2, 'text' => 'حالة الطالب'],
+//        ]];
+//        $subjects_names = [];
+//        foreach ($students as $student){
+//            $results = $student->result;
+//            foreach ($results as $result){
+//                $subject = Subject::find($result->subjects_id);
+//                if ($subject){
+//                        $subjects_names[] = $subject->name;
+//                        $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'التحريري'];
+//                        $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'التطبيقي'];
+//                        $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'اعمال السنة'];
+//                        $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'درجات الرافة'];
+//                        $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'الدرجة الكلية'];
+//                        $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'التقدير'];
+//                }
+//            }
+//
+//        }
+//
+//        $columns[0] = array_merge($columns[0], array_map(function ($subjectName) {
+//            return ['col' => 1, 'row' => 2, 'text' => $subjectName];
+//        }, $subjects_names));
+//
+//        return view('Dashboard.Student.absent-student', compact('students', 'results', 'subject', 'columns', 'subjects_names'));
+//
+//    }
+
+    public function AbsentStudents(Request $request)
+    {
+
+            $data = [
+                'gds_id' => 1,
+            ];
+        $students = Student::with('Studystatus')->where('studystatuses_id' , 2)->get();
+        foreach ($students as $student){
+            $results = Result::where(['students_id' => $student->id , 'grade' => 'غياب' ])->get();
+        }
+        $subjects = Subject::where($data)->pluck('name')
+            ->transform(function ($value) {
+                return ['col' => 6, 'row' => 1, 'text' => $value];
+            })->toArray();
+        $columns = [[
+            ['col' => 1, 'row' => 2, 'text' => 'اسم الطالب'],
+            ['col' => 1, 'row' => 2, 'text' => 'كود الطالب'],
+            ['col' => 1, 'row' => 2, 'text' => 'رقم جلوس الطالب'],
+            ['col' => 1, 'row' => 2, 'text' => 'حالة الطالب'],
+        ]];
+        $subjects_names = [];
+        foreach ($subjects as $subject) {
+            $subjects_names[] = $subject['text'];
+            $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'التحريري'];
+            $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'التطبيقي'];
+            $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'اعمال السنة'];
+            $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'درجات الرافة'];
+            $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'الدرجة الكلية'];
+            $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'التقدير'];
+        }
+        $columns[0] = array_merge($columns[0], $subjects);
+        return view('Dashboard.Student.absent-student', compact('students', 'subject', 'columns', 'subjects_names' , 'results'));
+    }
+
+    public function searchStudentsBySiteNum(Request $request)
+    {
+        $site_num = $request->input('site_num');
+        $student = Student::where('site_no', $site_num)->first();
+        if (!$student) {
+            return response()->json(['error' => 'Student not found'], 404);
+        }
+        return response()->json(['data' => $student], 200);
     }
 
 

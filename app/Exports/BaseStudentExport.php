@@ -5,6 +5,8 @@ namespace App\Exports;
 use App\Enums\ReportTypeEnum;
 use App\Models\GroupDepartmentSpecialize;
 use App\Models\Student;
+use App\Models\Trace;
+use App\Models\YearSemesterStudent;
 use Doctrine\DBAL\Result;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -43,14 +45,27 @@ abstract class BaseStudentExport
 
     public function query(): Builder
     {
-        $this->query = Student::with(['group', 'department', 'specialize', 'result.subject'])
+        $traceYear = Trace::where('yearsemester_id' , $this->year->id)->get();
+
+        if (isset($traceYear[1]['action'])){
+            $this->query = Student::with(['group', 'department', 'specialize', 'result.subject'])
             ->join('yearsemester_student', 'students.id', '=', 'yearsemester_student.student_id')
-            ->where('students.group_id', $this->groupId)
-            ->where('students.department_id', $this->departmentId)
-            ->where('students.specialize_id', $this->specializeId)
+                ->where('yearsemester_student.group_id', $this->groupId)
+                ->where('yearsemester_student.department_id', $this->departmentId)
+                ->where('yearsemester_student.specialize_id', $this->specializeId)
             ->where('yearsemester_student.yearsemester_id', $this->year->id);
-        if ($this->statusId !== 'all') {
-            $this->query->where('studystatuses_id', $this->statusId);
+            if ($this->statusId !== 'all') {
+                $yearSemesterStudent = YearSemesterStudent::where('id' , $this->year->id)->first();
+                $yearSemesterStudent->where('studystatuses_id', $this->statusId);
+            }
+        }else{
+            $this->query = Student::with(['group', 'department', 'specialize', 'result.subject'])
+                ->where('students.group_id', $this->groupId)
+                ->where('students.department_id', $this->departmentId)
+                ->where('students.specialize_id', $this->specializeId);
+            if ($this->statusId !== 'all') {
+                $this->query->where('studystatuses_id', $this->statusId);
+            }
         }
         return $this->query;
     }

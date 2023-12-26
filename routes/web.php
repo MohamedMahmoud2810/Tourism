@@ -89,11 +89,12 @@ Route::group(['middleware' => 'auth'], function () {
 
         ################################ Start Reports ##########################
         Route::get('reports',[ReportsController::class,'chooseReports'])->name('choose.reports');
-        Route::get('download-reports',[ReportsController::class,'reports'])->name('reports');
+        Route::get('download-reports', [ReportsController::class,'reports'])->name('reports');
         ################################ END Reports ##########################
-    Route::get('students/reports', [StudentsReportsController::class, 'show'])->name('student-reports');
-    Route::post('students/reports/filter-students', [StudentsReportsController::class, 'dataTableResultsStudents'])->name('filter-students');
-
+        Route::get('students/reports', [StudentsReportsController::class, 'show'])->name('student-reports');
+        Route::post('students/reports/filter-students', [StudentsReportsController::class, 'dataTableResultsStudents'])->name('filter-students');
+        Route::get('absent-students' , [StudentsReportsController::class , 'AbsentStudents'])->name('absent-students');
+        Route::get('/search-students', [StudentsReportsController::class , 'searchStudentsBySiteNum'])->name('searchStudentsBySiteNum');
 
 ####################### End Site Configuration ####################################
 });

@@ -56,7 +56,7 @@ class Student extends Model
 
     public function Studystatus()
     {
-        return $this->belongsTO('App\Models\Studystatus', 'studyStatus_id', 'id');
+        return $this->belongsTO('App\Models\Studystatus', 'studystatuses_id', 'id');
     }
 
     public function department()

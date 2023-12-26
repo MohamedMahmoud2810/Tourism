@@ -14,8 +14,8 @@ class Studystatus extends Model
     protected $hidden = ['created_at', 'updated_at'];
     public $timestamps = false;
 
-    public function student()
+    public function students()
     {
-        return $this->hasMany('App/Models/Student', 'studyStatus_id', 'id');
+        return $this->hasMany('App/Models/Student', 'studystatuses_id', 'id');
     }
 }

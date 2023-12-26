@@ -61,6 +61,7 @@
                   <a href="#" data-toggle="collapse" data-target="#rep"><i class="fa fa-th"></i> تقارير <i class="fa fa-fw fa-angle-down pull-right"></i></a>
                   <ul id="rep" class="collapse">
                       <li><a href="{{route('student-reports')}}"><i class="fa fa-users"></i><span>  تقارير الطلاب </span></a></li>
+                      <li><a href="{{route('absent-students')}}"><i class="fa fa-users"></i><span>  الطلاب الغائبين </span></a></li>
                   </ul>
               </li>
 
