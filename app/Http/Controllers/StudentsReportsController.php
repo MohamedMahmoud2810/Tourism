@@ -123,13 +123,13 @@ class StudentsReportsController extends Controller
         }
 
         $data = $validated->validate();
-
-
         $groupId = $data['group_id'];
         $departmentId = $data['department_id'];
         $specializeId = $data['specialize_id'];
         $year = YearSemester::where('id' , $data['yearsemester_id'])->first();
         $statusId = $data['studystatuses_id'];
+
+        $studentsQuery = Student::with(['group', 'department', 'specialize', 'result.subject']);
 
         $results = Result::query()
             ->join('subjects', 'results.subjects_id', '=', 'subjects.id')
@@ -145,33 +145,26 @@ class StudentsReportsController extends Controller
                 'yearsemester.year as year', 'yearsemester.semester as semester', 'grade'
             ])->selectRaw('written + applied + kpis + results.bonus as total')
             ->selectRaw('students.bonus as remaining_bonus')->get();
-        foreach ($results as $result){
-            dd($result);
-        }
-
-
         $traceYear = Trace::where('yearsemester_id' , $year->id)->get();
 
         if (isset($traceYear[1]['action'])){
-            $students = Student::with(['group', 'department', 'specialize', 'result.subject'])
-            ->join('yearsemester_student', 'students.id', '=', 'yearsemester_student.student_id')
+            $studentsQuery->join('yearsemester_student', 'students.id', '=', 'yearsemester_student.student_id')
                 ->where('yearsemester_student.group_id', $groupId)
                 ->where('yearsemester_student.department_id', $departmentId)
                 ->where('yearsemester_student.specialize_id', $specializeId)
-            ->where('yearsemester_student.yearsemester_id', $year->id);
-            if ($statusId !== 'all') {
-                $yearSemesterStudent = YearSemesterStudent::where('id' , $year->id)->first();
-                $yearSemesterStudent->where('studystatuses_id', $statusId);
-            }
+                ->where('yearsemester_student.yearsemester_id', $year->id);
+
         }else{
-            $students = Student::with(['group', 'department', 'specialize', 'result.subject'])
-                ->where('students.group_id', $groupId)
+            $studentsQuery->where('students.group_id', $groupId)
                 ->where('students.department_id', $departmentId)
                 ->where('students.specialize_id', $specializeId);
-            if ($statusId !== 'all') {
-                $students->where('studystatuses_id', $statusId);
-            }
+
         }
+        if ($statusId !== 'all') {
+            $studentsQuery->where('studystatuses_id', $statusId);
+        }
+        $students = $studentsQuery->get();
+
         $gradeCounts = [];
         $countAcceptedStudents = 0;
         $countGoodStudents = 0;
@@ -184,7 +177,7 @@ class StudentsReportsController extends Controller
 
         $studentSumOfGrades = 0;
         $percentage = 0;
-        foreach ($students->get() as $student){
+        foreach ($students as $student){
             foreach($student->result as $studentResult){
                 $totalForStudent = $studentResult->written + $studentResult->applied + $studentResult->bonus + $studentResult->kpis;
                 $totalForAllSubjects = count($student->result)*100;
@@ -198,7 +191,7 @@ class StudentsReportsController extends Controller
             } else {
                 $gradeCounts[$overallGrade] = 1;
             }
-            $enrolledStudentsCount = $students->get()->count();
+            $enrolledStudentsCount = $students->count();
 
 
             if ($gradesString['1'] === 'مقبول') {
@@ -269,6 +262,22 @@ class StudentsReportsController extends Controller
             return 'Undefined Report Type';
         }
 
+    }
+
+
+    private function processStudents($students, $statusId)
+    {
+        $overview = [
+            'enrolledStudentsCount' => $students->count(),
+            // ... (initialize other keys in the overview array)
+        ];
+
+        foreach ($students as $student) {
+            // Your existing logic to process each student and update $overview
+            // ... (your existing logic remains here)
+        }
+
+        return $overview;
     }
 
 //    public function (){
