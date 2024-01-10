@@ -95,6 +95,7 @@ Route::group(['middleware' => 'auth'], function () {
         Route::post('students/reports/filter-students', [StudentsReportsController::class, 'dataTableResultsStudents'])->name('filter-students');
         Route::get('absent-students' , [StudentsReportsController::class , 'AbsentStudents'])->name('absent-students');
         Route::get('/search-students', [StudentsReportsController::class , 'searchStudentsBySiteNum'])->name('searchStudentsBySiteNum');
+        Route::post('export-absent-students', [StudentsReportsController::class, 'ExportAbsentStudents'])->name('exportAbsentStudents');
 
 ####################### End Site Configuration ####################################
 });

@@ -83,6 +83,10 @@
         @endforeach
     </tr>
     @foreach($students as $student)
+        @php
+            $gradesString = $this->totalGrade($student->id);
+            $finalYearGrade = $gradesString[$group->id] ?? '';
+        @endphp
         <tr>
             <td class="tg-0pky" rowspan="4">{{$student->name}}</td>
             <td class="tg-0pky">اس</td>
@@ -91,7 +95,7 @@
             @endforeach
             <td class="tg-0lax" rowspan="6">{{$student->total_result ?? ''}}</td>
             <td class="tg-0lax" rowspan="6">{{$student->total_percentage ?? ''}}%</td>
-            <td class="tg-0lax" rowspan="6">{{$student->overall_grade ?? ''}}</td>
+            <td class="tg-0lax" rowspan="6">{{$finalYearGrade ?? ''}}</td>
         </tr>
         <tr>
             <td class="tg-0pky">تطبيقي</td>

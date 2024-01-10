@@ -1,3 +1,4 @@
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 @extends('layouts.dashboard.app')
 @section('style')
         <link rel="stylesheet" href="https://cdn.datatables.net/1.13.2/css/jquery.dataTables.min.css">
@@ -27,30 +28,113 @@
                 <div class="mx-auto max-w-12xl sm:px-6 lg:px-8">
                     <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                         <div class="p-6 bg-white border-b border-gray-200">
-                            <form id="searchForm">
-                                <div class="input-group m-5">
-                                    <input type="text" class="form-control " placeholder="Enter site_num" id="searchInput">
-                                    <div class="input-group-append">
-                                        <button class="btn btn-primary m-3" type="submit">Search</button>
-                                    </div>
-                                </div>
-                            </form>
                             <div class="mb-5">
                                 @include('partials._errors')
-                                <table class="dataTable display" id="resultsTable">
-                                    <thead>
-                                    @foreach($columns as $column)
-                                        <tr>
-                                            @foreach($column as $col)
-                                                <th colspan="{{$col['col']}}"
-                                                    rowspan="{{$col['row']}}" class="border">
-                                                <span style="transform: rotateZ(270deg)!important;">{{$col['text']}}</span>
-                                                </th>
-                                            @endforeach
-                                        </tr>
-                                    @endforeach
-                                    </thead>
-                                </table>
+                                <form class="w-full bg-white p-8" action="{{route('exportAbsentStudents')}}" method="POST"
+                                      enctype="multipart/form-data">
+                                    @csrf
+                                    @include('partials._errors')
+                                    <div class="top flex justify-center p-8">
+                                        <h1 class="text-3xl	">رفع نتائج الطلاب </h1>
+                                    </div>
+
+                                    <div class="flex flex-wrap -mx-3 mb-6">
+                                        <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
+                                            <label
+                                                class="block uppercase tracking-wide text-gray-700 text-xl font-bold mb-2"
+                                                for="grid-first-name">
+                                                الفرقة الدراسية
+                                            </label>
+                                            <label for="groups-dropdown"></label>
+                                            <select class="custom-select mb-3" id="groups-dropdown" name='group_id'>
+                                                <option selected disabled label="من فضلك أختر الفرقة ">من فضلك أختر
+                                                    الفرقة
+                                                </option>
+                                                @if($groups && $groups -> count() > 0)
+                                                    @foreach($groups as $group)
+                                                        <option
+                                                            value="{{$group -> id }}">{{$group -> name}}</option>
+                                                    @endforeach
+                                                @endif
+                                            </select>
+                                        </div>
+                                        <div class="w-full md:w-1/2 px-3">
+                                            <label
+                                                class="block uppercase tracking-wide text-gray-700 text-xl font-bold mb-2"
+                                                for="grid-last-name">
+                                                االشعبة
+                                            </label>
+                                            <label for="department-dropdown"></label>
+                                            <select class="custom-select mb-3" id="department-dropdown" name="department_id">
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-wrap -mx-3 mb-6">
+                                        <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
+                                            <label
+                                                class="block uppercase tracking-wide text-gray-700 text-xl font-bold mb-2"
+                                                for="grid-first-name">
+                                                التخصص
+                                            </label>
+                                            <label for="specialize-dropdown"></label>
+                                            <select class="custom-select mb-3" id="specialize-dropdown" name="specialize_id">
+                                            </select>
+                                        </div>
+                                        <div class="w-full md:w-1/2 px-3">
+                                            <label
+                                                class="block uppercase tracking-wide text-gray-700 text-xl font-bold mb-2"
+                                                for="grid-last-name">
+                                                السنة الدراسية
+                                            </label>
+                                            <select name="year" class="custom-select mb-3">
+                                                <option selected disabled hidden label="من فضلك أختر السنة ">من فضلك
+                                                    أختر السنة
+                                                </option>
+                                                @foreach($years as $year)
+                                                    <option value="{{$year->year}}">{{$year->year}}
+                                                    </option>
+                                                @endforeach
+
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-wrap -mx-3 mb-6">
+                                        <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
+                                            <label
+                                                class="block uppercase tracking-wide text-gray-700 text-xl font-bold mb-2"
+                                                for="grid-first-name">
+                                                اختر الفصل الدراسى
+                                            </label>
+                                            <label for="semester"></label><select name="semester" id="semester" class="custom-select mb-3">
+                                                <option selected disabled hidden label="من فضلك أختر الفصل الدراسي ">من
+                                                    فضلك أختر الفصل الدراسي
+                                                </option>
+
+                                                @foreach($semesters as $semester)
+                                                    <option
+                                                        value="{{$semester->semester}}">{{$semester->semester}}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="w-full md:w-1/2 px-3">
+                                            <label
+                                                class="block uppercase tracking-wide text-gray-700 text-xl font-bold mb-2"
+                                                for="grid-last-name">
+                                                مواد التخصص
+                                            </label>
+                                            <label for="subject-dropdown"></label><select name="subjects_id" class="custom-select mb-3" id="subject-dropdown">
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-center flex-wrap -mx-3 mb-6">
+                                        <div class="w-full flex justify-center md:w-1/2 px-3 mb-6 md:mb-0">
+                                            <button
+                                                class="shadow focus:shadow-outline focus:outline-none text-white font-bold py-4 px-20 rounded"
+                                                style="background:#144935;">اضافة
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -59,47 +143,9 @@
         </section>
     </div>
 @endsection
+<script src="{{asset('dashboard_files/js/filter.js')}}"></script>
 
-@push('scripts')
-    <script>
-        $(document).ready(function () {
-            $('#resultsTable').hide();
-            $('#searchForm').submit(function (e) {
-                e.preventDefault();
-                let site_num = $('#searchInput').val();
-                $.ajax({
-                    url: '{{ route('searchStudentsBySiteNum') }}', // Laravel route for the search functionality
-                    type: 'GET',
-                    data: { site_num: site_num }, // Send the site_num as a parameter
-                    dataType: 'json',
-                    success: function (response) {
-                        $('#resultsTable').DataTable().clear().destroy();
-                        let student = response.data;
-                        console.log(student);
-                            let newRow = '<tr>' +
-                                        // '<td>' + student.name  + '</td>'+
-                                        '<td>' + student.code  +'</td>'+
-                                        '<td>' +student.site_no + '</td>'+
-                                        // '<td>' + student.Studystatus.name + '</td>'+
-                                        // '<td>' + student.results.written + '</td>'+
-                                        // '<td>' + student.results.kpis + '</td>'+
-
-                                        // <td>${student.results.kpis}</td>
-                                        // <td>${student.results.applied}</td>
-                                        // <td>${student.results.bonus}</td>
-                                        // <td>${student.results.total}</td>
-                                        // <td>${student.results.grade}</td>
-                                     '</tr>';
-                        $('#students').html(newRow);
-                        $('#resultsTable').DataTable();
-                    },
-                    error: function (error) {
-                        console.log(error);
-                    }
-                });
-            });
-        });
-    </script>
-
-
-@endpush
+<script>
+    define('{{url('get-department-by-group')}}', '{{url('get-specializes-by-department')}}',
+        '{{url('get-subject-by-department')}}', '{{csrf_token()}}', 1);
+</script>

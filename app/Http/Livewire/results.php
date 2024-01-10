@@ -188,7 +188,7 @@ final class results extends PowerGridComponent
         $subject = Result::with('subject')->find($id)->subject->getOriginal();
         $this->validate(
             [
-                'written.*' => 'integer|between:0,' . $subject['max_written'],
+                'written.*' => 'integer|between:-1,' . $subject['max_written'],
                 'applied.*' => 'integer|between:0,' . $subject['max_applied'],
                 'kpis.*' => 'integer|between:0,' . $subject['max_kpis'],
             ]

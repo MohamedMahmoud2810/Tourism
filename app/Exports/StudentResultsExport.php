@@ -26,6 +26,8 @@ class StudentResultsExport extends BaseStudentExport implements FromView
 
     protected string $statusId;
 
+    protected string $finalYearGrade;
+
     public function __construct($results ,string $groupId , string $departmentId , string $specializeId ,  $year , string $statusId)
     {
         $this->results = $results;

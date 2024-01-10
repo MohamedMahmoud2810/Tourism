@@ -103,7 +103,7 @@ trait SubjectTrait
     }
 
     public function grade(int $subject_id, ?int $written, int $kpis, int $applied, int $bonus = 0): string
-{
+    {
     $subject = $this->getSubjectInfo($subject_id);
     $total = $written + $kpis + $applied + $bonus;
     $subject_total = $subject['max_written'] + $subject['max_kpis'] + $subject['max_applied'];

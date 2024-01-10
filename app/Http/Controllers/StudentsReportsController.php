@@ -25,6 +25,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\AbsentStudentsExport;
 
 class StudentsReportsController extends Controller
 {
@@ -128,8 +129,34 @@ class StudentsReportsController extends Controller
         $specializeId = $data['specialize_id'];
         $year = YearSemester::where('id' , $data['yearsemester_id'])->first();
         $statusId = $data['studystatuses_id'];
+        $traceYear = Trace::where('yearsemester_id' , $year->id)->get();
 
-        $studentsQuery = Student::with(['group', 'department', 'specialize', 'result.subject']);
+
+
+
+
+
+
+        $studentsQuery = Student::with(['group', 'department', 'specialize', 'result'])
+            ->where(function ($query) use ($groupId, $departmentId, $specializeId, $year , $statusId , $traceYear) {
+                if (isset($traceYear[1]['action'])){
+                    $query->join('yearsemester_student', function ($join) use ($groupId,$departmentId ,$specializeId, $year) {
+                        $join->on('students.id', '=', 'yearsemester_student.student_id')
+                            ->where('yearsemester_student.group_id', $groupId)
+                            ->where('yearsemester_student.department_id', $departmentId)
+                            ->where('yearsemester_student.specialize_id', $specializeId)
+                            ->where('yearsemester_student.yearsemester_id', $year->id);
+                    });
+                } else {
+                    $query->where('students.group_id', $groupId)
+                        ->where('students.department_id', $departmentId)
+                        ->where('students.specialize_id', $specializeId);
+                }
+                    if ($statusId !== 'all') {
+                        $query->where('studystatuses_id', $statusId);
+                    }
+            });
+
 
         $results = Result::query()
             ->join('subjects', 'results.subjects_id', '=', 'subjects.id')
@@ -137,32 +164,30 @@ class StudentsReportsController extends Controller
             ->join('yearsemester', 'results.yearsemester_id', '=', 'yearsemester.id')
             ->join('studystatuses', 'students.studystatuses_id', '=', 'studystatuses.id')
             ->select([
-                'results.id', 'students.name as nameStd', 'students.code as code', 'students.bonus',
-                'students.site_no as site_no', 'studystatuses.name as status','results.subjects_id',
-                'results.bonus', 'written', 'applied', 'kpis',
-                'subjects.name as subject', 'subjects.max_written',
-                'subjects.max_kpis', 'subjects.max_applied',
-                'yearsemester.year as year', 'yearsemester.semester as semester', 'grade'
-            ])->selectRaw('written + applied + kpis + results.bonus as total')
-            ->selectRaw('students.bonus as remaining_bonus')->get();
-        $traceYear = Trace::where('yearsemester_id' , $year->id)->get();
+                'results.id',
+                'students.name as nameStd',
+                'students.code as code',
+                'students.bonus',
+                'students.site_no as site_no',
+                'studystatuses.name as status',
+                'results.subjects_id',
+                'results.bonus',
+                'written',
+                'applied',
+                'kpis',
+                'subjects.name as subject',
+                'subjects.max_written',
+                'subjects.max_kpis',
+                'subjects.max_applied',
+                'yearsemester.year as year',
+                'yearsemester.semester as semester',
+                'grade'
+            ])
+            ->selectRaw('written + applied + kpis + results.bonus as total')
+            ->selectRaw('students.bonus as remaining_bonus')
+            ->get();
 
-        if (isset($traceYear[1]['action'])){
-            $studentsQuery->join('yearsemester_student', 'students.id', '=', 'yearsemester_student.student_id')
-                ->where('yearsemester_student.group_id', $groupId)
-                ->where('yearsemester_student.department_id', $departmentId)
-                ->where('yearsemester_student.specialize_id', $specializeId)
-                ->where('yearsemester_student.yearsemester_id', $year->id);
 
-        }else{
-            $studentsQuery->where('students.group_id', $groupId)
-                ->where('students.department_id', $departmentId)
-                ->where('students.specialize_id', $specializeId);
-
-        }
-        if ($statusId !== 'all') {
-            $studentsQuery->where('studystatuses_id', $statusId);
-        }
         $students = $studentsQuery->get();
 
         $gradeCounts = [];
@@ -184,7 +209,9 @@ class StudentsReportsController extends Controller
                 $studentSumOfGrades += $totalForStudent;
                 $percentage = ($studentSumOfGrades / $totalForAllSubjects)*100;
             }
+            $gid = $request->group_id;
             $gradesString = $this->totalGrade($student->id);
+            $finalYearGrade = $gradesString[$gid];
             $overallGrade = implode(', ', $gradesString);
             if (isset($gradeCounts[$overallGrade])) {
                 $gradeCounts[$overallGrade]++;
@@ -213,8 +240,6 @@ class StudentsReportsController extends Controller
                 $countWithTwoSubject++;
             }
         }
-
-
         $succeededStudents = $countAcceptedStudents + $countGoodStudents + $countVeryGoodStudents + $countExcellentStudents + $countWithOneSubject + $countWithTwoSubject;
         $successPercentage = number_format(($succeededStudents / $enrolledStudentsCount)*100 , 2);
 
@@ -251,34 +276,63 @@ class StudentsReportsController extends Controller
             default:
                 return abort(400, 'Unsupported report type');
         }
-        if($data['report_type']  == 1){
-            return Excel::download($exportClass, 'filtered_results.xlsx');
-        }elseif ($data['report_type'] == 2){
-            $export = new StudentOverviewExport($groupId, $departmentId, $specializeId, $year, $statusId, $overview);
-            return Excel::download($export, 'students_overview.xlsx');
-        }elseif ($data['report_type'] == 3){
-            return Excel::download($exportClass, 'students_statistics.xlsx');
-        }else{
-            return 'Undefined Report Type';
-        }
-
+        return Excel::download($exportClass, $this->getExportFileName($data['report_type']));
     }
 
 
-    private function processStudents($students, $statusId)
+
+
+    private function getExportFileName($reportType): string
     {
-        $overview = [
-            'enrolledStudentsCount' => $students->count(),
-            // ... (initialize other keys in the overview array)
-        ];
-
-        foreach ($students as $student) {
-            // Your existing logic to process each student and update $overview
-            // ... (your existing logic remains here)
+        switch ($reportType) {
+            case 1:
+                return 'filtered_results.xlsx';
+            case 2:
+                return 'students_overview.xlsx';
+            case 3:
+                return 'students_statistics.xlsx';
+            default:
+                return 'undefined_report.xlsx';
         }
-
-        return $overview;
     }
+
+    public function AbsentStudents()
+    {
+        $subjects = Subject::paginate();
+        $groups = Group::whereNot('name', 'خريجين')->get();
+        $departments = Department::paginate();
+        $specializes = Specialize::paginate();
+        $years = YearSemester::select('year')->distinct()->get();
+        $semesters = YearSemester::select('semester')->distinct()->get();
+        return view('Dashboard.Student.absent-student' , compact('subjects', 'specializes', 'groups', 'departments', 'years', 'semesters'));
+    }
+
+
+    public function ExportAbsentStudents (Request $request){
+         $request->validate([
+            'subjects_id' => 'required|exists:subjects,id',
+            'year' => [
+                'required', function ($attribute, $value, $fail) use ($request) {
+                    if (!YearSemester::where('year', $value)->where('semester', $request->semester)->exists()) {
+                        $fail('الفصل الدراسي مع هذه السنه غير موجود');
+                    }
+                }
+            ],
+            'semester' => 'required|string|min:3|max:8|in:دور تاني,اول,ثاني',
+             'group_id' => 'required',
+             'department_id' => 'required',
+        ]);
+
+        $subjectName = Subject::where('id' , $request->subjects_id)->first()->name;
+
+        return Excel::download(new AbsentStudentsExport($subjectName), 'absent_students.xlsx');
+
+
+
+
+
+    }
+
 
 //    public function (){
 //        $students = Student::with('Studystatus')->where('studystatuses_id' , 2)->get();
@@ -315,51 +369,4 @@ class StudentsReportsController extends Controller
 //        return view('Dashboard.Student.absent-student', compact('students', 'results', 'subject', 'columns', 'subjects_names'));
 //
 //    }
-
-    public function AbsentStudents(Request $request)
-    {
-
-            $data = [
-                'gds_id' => 1,
-            ];
-        $students = Student::with('Studystatus')->where('studystatuses_id' , 2)->get();
-        foreach ($students as $student){
-            $results = Result::where(['students_id' => $student->id , 'grade' => 'غياب' ])->get();
-        }
-        $subjects = Subject::where($data)->pluck('name')
-            ->transform(function ($value) {
-                return ['col' => 6, 'row' => 1, 'text' => $value];
-            })->toArray();
-        $columns = [[
-            ['col' => 1, 'row' => 2, 'text' => 'اسم الطالب'],
-            ['col' => 1, 'row' => 2, 'text' => 'كود الطالب'],
-            ['col' => 1, 'row' => 2, 'text' => 'رقم جلوس الطالب'],
-            ['col' => 1, 'row' => 2, 'text' => 'حالة الطالب'],
-        ]];
-        $subjects_names = [];
-        foreach ($subjects as $subject) {
-            $subjects_names[] = $subject['text'];
-            $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'التحريري'];
-            $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'التطبيقي'];
-            $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'اعمال السنة'];
-            $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'درجات الرافة'];
-            $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'الدرجة الكلية'];
-            $columns[1][] = ['col' => 1, 'row' => 1, 'text' => 'التقدير'];
-        }
-        $columns[0] = array_merge($columns[0], $subjects);
-        return view('Dashboard.Student.absent-student', compact('students', 'subject', 'columns', 'subjects_names' , 'results'));
-    }
-
-    public function searchStudentsBySiteNum(Request $request)
-    {
-        $site_num = $request->input('site_num');
-        $student = Student::where('site_no', $site_num)->first();
-        if (!$student) {
-            return response()->json(['error' => 'Student not found'], 404);
-        }
-        return response()->json(['data' => $student], 200);
-    }
-
-
-
 }
