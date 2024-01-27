@@ -1,0 +1,215 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    font-family: 'Noto Kufi Arabic', sans-serif
+}
+
+.container {
+    min-height: 100vh;
+    background-color:gray;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: auto !important;
+}
+
+.card {
+    /* height: 350px; */
+    width: 400px;
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px 15px
+}
+
+.card hr {
+    border-top: 1px solid #ccc;
+    margin-bottom: 20px;
+    margin-top: 10px
+}
+
+.card h3 {
+    letter-spacing: 1px;
+    font-size: 20px;
+    font-weight: 900;
+    font-family: inherit!important;
+    text-align: center;
+}
+
+.card-details {
+    position: relative
+}
+
+.card-details input,select {
+    width: 100%;
+    height: 48px;
+    /* padding: 0px 10px; */
+    box-sizing: border-box;
+    border: 3px solid #ccc;
+    outline: none;
+    border-radius: 10px;
+    caret-color: #3769D3;
+    font-size: 16px;
+    transition: all 1s
+}
+
+.card-details input:focus ,select:focus {
+    border: 3px solid #3769D3
+}
+
+.card-details input:focus~span ,select:focus~span {
+    color: #3769D3;
+    font-weight: 900
+}
+
+.card-details input:focus~i {
+    color: #3769D3
+}
+
+.card-details span {
+    position: absolute;
+    top: -10px;
+    right: 15px;
+    background-color: white;
+    font-size: 14px;
+    padding: 0px 5px;
+    transition: all 1s
+}
+
+.card-details i {
+    position: absolute;
+    right: 10px;
+    top: 15px;
+    color: #ccc;
+    z-index: 1000;
+    transition: all 1s
+}
+
+.exp-cvv {
+    margin-top: 25px;
+    display: flex;
+    flex: 0 50%;
+    flex-direction: row;
+    justify-content: center;
+    gap: 5px;
+
+}
+
+.mt-25 {
+    margin-top: 25px
+}
+
+.tick {
+    display: flex;
+    padding: 20px 10px;
+    align-items: center
+}
+
+.tick span {
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    border: 3px solid blue;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    cursor: pointer;
+    color: #fff
+}
+
+.d-none {
+    display: none
+}
+
+.tick p {
+    margin-left: 15px;
+    font-weight: 900;
+    font-size: 18px
+}
+
+.p-blue {
+    background-color: blue !important
+}
+
+.button {
+    display: flex;
+    justify-content: center;
+    align-items: center
+}
+
+.button button {
+    height: 50px;
+    width: 100%;
+    border-radius: 10px;
+    background-color: #144935;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    transition: all 0.5s;
+    cursor: pointer;
+    border: none;
+    margin-top: 3%;
+}
+
+.button button:hover {
+    background-color: #144935;
+}
+
+
+option{
+    font-size: 18px !important;
+    text-align: right;
+}
+.overflow-auto{
+    overflow: unset!important;
+}
+
+.custom-file-input::-webkit-file-upload-button {
+    visibility: hidden;
+  }
+  .custom-file-input::before {
+    content: 'اختر ملف';
+    display: inline-block;
+    background: linear-gradient(top, #f9f9f9, #e3e3e3);
+    /* border: 1px solid #999; */
+    border-radius: 3px;
+    padding: 5px 8px;
+    outline: none;
+    white-space: nowrap;
+    cursor: pointer;
+    text-shadow: 1px 1px #fff;
+    font-weight: 700;
+    font-size: 15pt;
+  }
+
+  .custom-file-input:active::before {
+    background: -webkit-linear-gradient(top, #e3e3e3, #f9f9f9);
+  }
+  .d-flex{
+    display: flex!important;
+}
+.justify-content-center{
+    justify-content: center!important;
+}
+.btn-success{
+    background-color: #144935!important;
+    font-size: 15px!important;
+}
+.input-outline{
+    width: 100%;
+    padding: 0px 10px;
+    box-sizing: border-box;
+    border: 3px solid #ccc;
+    outline: none;
+    border-radius: 10px!important;
+    font-size: 17px;
+    text-align: center;
+}
+.labl
+{
+    font-size: 16px!important;
+}
+
+
