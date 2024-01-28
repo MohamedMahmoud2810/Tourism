@@ -89,5 +89,10 @@ class Student extends Model
         return $this->hasMany(YearSemesterStudent::class, 'student_id');
     }
 
+    public function studentResults()
+    {
+        return $this->hasMany(StudentResult::class);
+    }
+
 
 }

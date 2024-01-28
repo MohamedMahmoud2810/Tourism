@@ -93,6 +93,7 @@ Route::group(['middleware' => 'auth'], function () {
         ################################ END Reports ##########################
         Route::get('students/reports', [StudentsReportsController::class, 'show'])->name('student-reports');
         Route::post('students/reports/filter-students', [StudentsReportsController::class, 'dataTableResultsStudents'])->name('filter-students');
+        Route::post('students-result-pdf', [StudentsReportsController::class, 'dataTableResultsStudentsPdf'])->name('student-result-pdf');
         Route::get('absent-students' , [StudentsReportsController::class , 'AbsentStudents'])->name('absent-students');
         Route::get('/search-students', [StudentsReportsController::class , 'searchStudentsBySiteNum'])->name('searchStudentsBySiteNum');
 

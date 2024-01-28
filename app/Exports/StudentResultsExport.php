@@ -16,7 +16,7 @@ class StudentResultsExport extends BaseStudentExport implements FromView
 {
     use Exportable;
 
-    protected $results;
+
     protected string $groupId;
     protected string $departmentId;
 
@@ -26,9 +26,8 @@ class StudentResultsExport extends BaseStudentExport implements FromView
 
     protected string $statusId;
 
-    public function __construct($results ,string $groupId , string $departmentId , string $specializeId ,  $year , string $statusId)
+    public function __construct(string $groupId , string $departmentId , string $specializeId ,  $year , string $statusId)
     {
-        $this->results = $results;
         $this->groupId = $groupId;
         $this->departmentId = $departmentId;
         $this->specializeId = $specializeId;
@@ -36,10 +35,7 @@ class StudentResultsExport extends BaseStudentExport implements FromView
         $this->statusId = $statusId;
     }
 
-    public function collection()
-    {
-        return collect($this->results);
-    }
+
 
     public function view(): View
     {

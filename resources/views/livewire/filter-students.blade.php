@@ -6,7 +6,7 @@
                     <div class="p-6 bg-white border-b border-gray-200">
                         <div class="mb-5">
                             @include('partials._errors')
-                            <form action="{{route('filter-students')}}" method="POST">
+                            <form id="myForm" method="POST">
                                 @csrf
                                 @php
                                     $data = $data ?? [];
@@ -77,7 +77,10 @@
                                         </select>
                                     </div>
                                     <div class="card-details mt-2 col-md-4">
-                                        <button class="btn btn-success btn-lg" type="submit">تحميل</button>
+                                        <button class="btn btn-success btn-lg" onclick="setFormAction('{{route('filter-students') }}')" type="button">تحميل</button>
+                                        <button class="btn btn-success btn-lg" onclick="setFormAction('{{route('student-result-pdf')}}')" type="button"> pdf تحميل</button>
+                                        <button type="submit" style="display: none;">Submit</button>
+
                                     </div>
                                 </div>
                             </form>
@@ -88,3 +91,11 @@
         </div>
     </section>
 </div>
+
+
+<script>
+    function setFormAction(action) {
+        document.getElementById('myForm').action = action;
+        document.getElementById('myForm').submit()
+    }
+</script>

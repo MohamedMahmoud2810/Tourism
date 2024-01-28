@@ -99,6 +99,147 @@ class StudentsReportsController extends Controller
 
     public function dataTableResultsStudents (Request $request)
     {
+        ini_set('max_execution_time', 240);
+        $validated = Validator::make($request->all(), [
+            'department_id' => 'required|exists:departments,id',
+            'group_id' => 'required|exists:groups,id',
+            'specialize_id' => ['required', 'exists:specializes,id',
+                function ($attr, $value, $fail) use ($request) {
+                    $check = GroupDepartmentSpecialize::where('specialize_id', $value);
+                    if (!is_null($request->group_id)) {
+                        $check->where('group_id', $request->group_id);
+                    }
+                    if (!is_null($request->departments_id)) {
+                        $check->where('department_id', $request->departments_id);
+                    }
+                    if (!$check->exists()) {
+                        $fail('Error');
+                    }
+                }],
+            'yearsemester_id' => 'required',
+            'yearsemester_id.*' => 'required|exists:yearsemester,id',
+            'studystatuses_id' => 'required|in:1,2,3,all',
+            'report_type' => 'required|in:1,2,3',
+        ]);
+        if ($validated->fails()) {
+            return response(["draw" => 1,
+                "recordsTotal" => 0,
+                "recordsFiltered" => 0, 'data' => []], 200);
+        }
+        $data = $validated->validate();
+        $groupId = $data['group_id'];
+        $departmentId = $data['department_id'];
+        $specializeId = $data['specialize_id'];
+        $year = YearSemester::where('id' , $data['yearsemester_id'])->first();
+        $statusId = $data['studystatuses_id'];
+        $traceYear = Trace::where('yearsemester_id' , $year->id)->get();
+
+        $studentsQuery = Student::with(['group', 'department', 'specialize', 'result' , 'studentResults'])
+            ->where(function ($query) use ($groupId, $departmentId, $specializeId, $year , $statusId , $traceYear) {
+                if (isset($traceYear[1]['action'])){
+                    $query->join('yearsemester_student', function ($join) use ($groupId,$departmentId ,$specializeId, $year) {
+                        $join->on('students.id', '=', 'yearsemester_student.student_id')
+                            ->where('yearsemester_student.group_id', $groupId)
+                            ->where('yearsemester_student.department_id', $departmentId)
+                            ->where('yearsemester_student.specialize_id', $specializeId)
+                            ->where('yearsemester_student.yearsemester_id', $year->id)
+                            ->where('student_results.yearsemester_id', $year->id);
+                    });
+
+                } else {
+                    $query->where('students.group_id', $groupId)
+                        ->where('students.department_id', $departmentId)
+                        ->where('students.specialize_id', $specializeId);
+                }
+                if ($statusId !== 'all') {
+                    $query->where('studystatuses_id', $statusId);
+                }
+            });
+
+        $students = $studentsQuery->get();
+
+
+        $countAcceptedStudents = 0;
+        $countGoodStudents = 0;
+        $countVeryGoodStudents = 0;
+        $countExcellentStudents = 0;
+        $countWithOneSubject = 0;
+        $countWithTwoSubject = 0;
+        $absentStudents = 0;
+        $failedStudents = 0;
+
+        foreach ($students as $student){
+            $enrolledStudentsCount = $students->count();
+            $level1Grade = $student->totalGrade;
+            switch ($level1Grade) {
+                case 'مقبول':
+                    $countAcceptedStudents++;
+                    break;
+                case 'جيد':
+                    $countGoodStudents++;
+                    break;
+                case 'جيد جدا':
+                    $countVeryGoodStudents++;
+                    break;
+                case 'ممتاز':
+                    $countExcellentStudents++;
+                    break;
+                case 'مادة':
+                    $countWithOneSubject++;
+                    break;
+                case 'راسب':
+                    $failedStudents++;
+                    break;
+                case 'غائب':
+                    $absentStudents++;
+                    break;
+                case 'مادتين':
+                    $countWithTwoSubject++;
+                    break;
+            }
+
+        }
+        $succeededStudents = $countAcceptedStudents + $countGoodStudents + $countVeryGoodStudents + $countExcellentStudents + $countWithOneSubject + $countWithTwoSubject;
+        $successPercentage = number_format(($succeededStudents / $enrolledStudentsCount)*100 , 2);
+
+        $overview = [
+            'enrolledStudentsCount' => $enrolledStudentsCount,
+            'appliedStudentsCount' => $enrolledStudentsCount,
+            'presentStudentsCount' => $enrolledStudentsCount-$absentStudents,
+            'absentStudentsCount' => $absentStudents,
+            'suspendedStudentsCount' => 0,
+            'excellentStudentsCount' => $countExcellentStudents,
+            'veryGoodStudentsCount' => $countVeryGoodStudents,
+            'goodStudentsCount' => $countGoodStudents,
+            'passStudentsCount' => $countAcceptedStudents,
+            'failedStudentsCount' => $failedStudents,
+            'succeededStudentsCount' => $succeededStudents,
+            'oneSubjectFailedStudentCount' => $countWithOneSubject,
+            'twoSubjectFailedStudentCount' => $countWithTwoSubject,
+            'totalSuccessPercentage' => $successPercentage,
+        ];
+
+        switch ((int)$data['report_type']) {
+            case 1:
+                $view = 'export_students';
+                $exportClass = new StudentResultsExport($groupId, $departmentId, $specializeId, $year, $statusId);
+                break;
+            case 2:
+                $view = 'students_overview';
+                $exportClass = new StudentOverviewExport($groupId, $departmentId, $specializeId, $year, $statusId , $overview);
+                break;
+            case 3:
+                $view = 'students_statistics';
+                $exportClass = new StudentStatisticsExport($groupId, $departmentId, $specializeId, $year, $statusId , $overview);
+                break;
+            default:
+                return abort(400, 'Unsupported report type');
+        }
+        return Excel::download($exportClass, $this->getExportFileName($data['report_type']) , \Maatwebsite\Excel\Excel::XLSX);
+    }
+
+    public function dataTableResultsStudentspdf (Request $request)
+    {
         // return view('exports.logo');
         $validated = Validator::make($request->all(), [
             'department_id' => 'required|exists:departments,id',
@@ -138,15 +279,11 @@ class StudentsReportsController extends Controller
 
         $studentsQuery = Student::with([
             'group', 'department', 'specialize', 'result'
-        ])
+])
         ->where(function ($query) use ($groupId, $departmentId, $specializeId, $year, $statusId, $traceYear) {
             if (isset($traceYear[1]['action'])) {
                 $query->join('yearsemester_student', function ($join) use ($groupId, $departmentId, $specializeId, $year) {
-                    $join->on(
-                        'students.id',
-                        '=',
-                        'yearsemester_student.student_id'
-                    )
+                    $join->on('students.id','=','yearsemester_student.student_id')
                     ->where('yearsemester_student.group_id', $groupId)
                     ->where('yearsemester_student.department_id', $departmentId)
                     ->where('yearsemester_student.specialize_id', $specializeId)
@@ -162,37 +299,6 @@ class StudentsReportsController extends Controller
             }
         });
 
-
-        $results = Result::query()
-            ->join('subjects', 'results.subjects_id', '=', 'subjects.id')
-            ->join('students', 'results.students_id', '=', 'students.id')
-            ->join('yearsemester', 'results.yearsemester_id', '=', 'yearsemester.id')
-            ->join('studystatuses', 'students.studystatuses_id', '=', 'studystatuses.id')
-            ->select([
-                'results.id',
-                'students.name as nameStd',
-                'students.code as code',
-                'students.bonus',
-                'students.site_no as site_no',
-                'studystatuses.name as status',
-                'results.subjects_id',
-                'results.bonus',
-                'written',
-                'applied',
-                'kpis',
-                'subjects.name as subject',
-                'subjects.max_written',
-                'subjects.max_kpis',
-                'subjects.max_applied',
-                'yearsemester.year as year',
-                'yearsemester.semester as semester',
-                'grade'
-            ])
-            ->selectRaw('written + applied + kpis + results.bonus as total')
-            ->selectRaw('students.bonus as remaining_bonus')
-            ->get();
-
-
         $students = $studentsQuery->get();
 
         $gradeCounts = [];
@@ -205,44 +311,35 @@ class StudentsReportsController extends Controller
         $absentStudents = 0;
         $failedStudents = 0;
 
-        $studentSumOfGrades = 0;
-        $percentage = 0;
         foreach ($students as $student){
-            foreach($student->result as $studentResult){
-                $totalForStudent = $studentResult->written + $studentResult->applied + $studentResult->bonus + $studentResult->kpis;
-                $totalForAllSubjects = count($student->result)*100;
-                $studentSumOfGrades += $totalForStudent;
-                $percentage = ($studentSumOfGrades / $totalForAllSubjects)*100;
-            }
-            $gid = $request->group_id;
-            $gradesString = $this->totalGrade($student->id);
-            $finalYearGrade = $gradesString[$gid];
-            $overallGrade = implode(', ', $gradesString);
-            if (isset($gradeCounts[$overallGrade])) {
-                $gradeCounts[$overallGrade]++;
-            } else {
-                $gradeCounts[$overallGrade] = 1;
-            }
+
             $enrolledStudentsCount = $students->count();
-
-
-            if ($gradesString['1'] === 'مقبول') {
-                $countAcceptedStudents++;
-            } elseif($gradesString['1'] === 'جيد') {
-                $countGoodStudents++;
-            }elseif($gradesString['1'] === 'جيد جدا') {
-                $countVeryGoodStudents++;
-            }elseif($gradesString['1'] === 'ممتاز') {
-                $countExcellentStudents++;
-            }elseif($gradesString['1'] === 'مادة') {
-                $countWithOneSubject++;
-            }
-            elseif($gradesString['1'] === 'راسب') {
-                $failedStudents++;
-            } elseif($gradesString['1'] === 'غائب') {
-                $absentStudents++;
-            } elseif($gradesString['1'] === 'مادتين') {
-                $countWithTwoSubject++;
+            $level1Grade = $student->totalGrade;
+            switch ($level1Grade) {
+                case 'مقبول':
+                    $countAcceptedStudents++;
+                    break;
+                case 'جيد':
+                    $countGoodStudents++;
+                    break;
+                case 'جيد جدا':
+                    $countVeryGoodStudents++;
+                    break;
+                case 'ممتاز':
+                    $countExcellentStudents++;
+                    break;
+                case 'مادة':
+                    $countWithOneSubject++;
+                    break;
+                case 'راسب':
+                    $failedStudents++;
+                    break;
+                case 'غائب':
+                    $absentStudents++;
+                    break;
+                case 'مادتين':
+                    $countWithTwoSubject++;
+                    break;
             }
         }
         $succeededStudents = $countAcceptedStudents + $countGoodStudents + $countVeryGoodStudents + $countExcellentStudents + $countWithOneSubject + $countWithTwoSubject;
@@ -315,7 +412,7 @@ class StudentsReportsController extends Controller
         switch ((int)$data['report_type']) {
             case 1:
                 $view = 'export_students';
-                $exportClass = new StudentResultsExport($results, $groupId, $departmentId, $specializeId, $year, $statusId);
+                $exportClass = new StudentResultsExport($groupId, $departmentId, $specializeId, $year, $statusId);
                 $content = $exportClass->view_pdf();
                 break;
             case 2:
@@ -340,11 +437,11 @@ class StudentsReportsController extends Controller
     {
         switch ($reportType) {
             case 1:
-                return 'filtered_results';
+                return 'filtered_results.xlsx';
             case 2:
-                return 'students_overview';
+                return 'students_overview.xlsx';
             case 3:
-                return 'students_statistics';
+                return 'students_statistics.xlsx';
             default:
                 return 'undefined_report';
         }
